@@ -38,6 +38,12 @@ class MultiPrcptrn(torch.nn.Module):
 
         return num_incor
 
+    def update_w(self, data, target, lr):
+        error = target - self.forward(data)
+        self.linear = self.linear + lr * error * data
+
+        # to do NEXT: figure out how to get a sigle value for error
+
 
 # training set size
 n = 50
@@ -54,7 +60,9 @@ validation_data = datasets.MNIST(
     root="data", train=False, download=False, transform=transforms.ToTensor()
 )
 
-t_data = torch.utils.data.DataLoader(training_data, shuffle=True)
+training_subset = torch.utils.data.Subset(training_data, list(range(n)))
+
+t_data = torch.utils.data.DataLoader(training_subset, shuffle=True)
 v_data = torch.utils.data.DataLoader(validation_data, shuffle=False)
 
 
@@ -70,9 +78,11 @@ for data, target in t_data:
     break
 print(model(data))
 print(model.forward(data, True).item())
+model.update_w(data, target, 1)
 print()
 print(target.item())
 print()
 print(model.misclass(v_data))
+print(model.misclass(t_data))
 
 # %%
