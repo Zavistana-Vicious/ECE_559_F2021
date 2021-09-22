@@ -14,7 +14,6 @@ class MultiPrcptrn(torch.nn.Module):
         self.linear = torch.nn.Linear(28 * 28, 10)
 
     def forward(self, x, misclass=False):
-        # x = x.flatten()
         x = x.view(-1, 28 * 28)
         x = self.linear(x)
         y = torch.heaviside(x, torch.tensor([1.0]))
@@ -31,7 +30,7 @@ class MultiPrcptrn(torch.nn.Module):
         self.eval()
         num_incor = 0
         for data, target in dataload:
-            predict = model.forward(data, True).item()
+            predict = self.forward(data, True).item()
             target = target.item()
             if target != predict:
                 num_incor += 1
@@ -40,18 +39,17 @@ class MultiPrcptrn(torch.nn.Module):
 
     def update_w(self, data, target, lr):
         error = target - self.forward(data)
-        self.linear = self.linear + lr * error * data
+        error = torch.transpose(error, 0, 1)
+        data = data.view(-1, 28 * 28)
+        self.linear.weight.data = self.linear.weight.data + lr * torch.matmul(
+            error, data
+        )
 
-        # to do NEXT: figure out how to get a sigle value for error
+    def an_epoch(self, dataload, lr):
+        self.train()
+        for data, target in dataload:
+            self.update_w(data, target, lr)
 
-
-# training set size
-n = 50
-# learning rate
-lr = 1
-
-
-batch_size = None
 
 training_data = datasets.MNIST(
     root="data", train=True, download=False, transform=transforms.ToTensor()
@@ -59,30 +57,32 @@ training_data = datasets.MNIST(
 validation_data = datasets.MNIST(
     root="data", train=False, download=False, transform=transforms.ToTensor()
 )
-
-training_subset = torch.utils.data.Subset(training_data, list(range(n)))
-
-t_data = torch.utils.data.DataLoader(training_subset, shuffle=True)
 v_data = torch.utils.data.DataLoader(validation_data, shuffle=False)
 
+# %%
+# f, g, h
+n_list = [50]
+lr = 1
+epsilon = 0
 
-# pixels = training_data[0][0][0]
-# plt.imshow(pixels)
-# plt.show()
+for n in n_list:
+    model = MultiPrcptrn()
 
-model = MultiPrcptrn()
-data, target = 0, 0
-for data, target in t_data:
-    data = data
-    target = target
-    break
-print(model(data))
-print(model.forward(data, True).item())
-model.update_w(data, target, 1)
-print()
-print(target.item())
-print()
-print(model.misclass(v_data))
-print(model.misclass(t_data))
+    # change size of training set here
+    training_subset = torch.utils.data.Subset(training_data, list(range(n)))
+    t_data = torch.utils.data.DataLoader(training_subset, shuffle=True)
+
+    epochs = 0
+    misclass_list = [model.misclass(t_data)]
+    while misclass_list[-1] > epsilon:
+        epochs += 1
+        model.an_epoch(t_data, lr)
+        wrong = model.misclass(t_data)
+        print(wrong)
+        misclass_list.append(wrong)
+
+    print(epochs)
+    print(misclass_list)
+    print(model.misclass(v_data))
 
 # %%
