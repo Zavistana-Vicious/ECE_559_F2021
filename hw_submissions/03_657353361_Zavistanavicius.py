@@ -38,12 +38,18 @@ class MultiPrcptrn(torch.nn.Module):
         return num_incor
 
     def update_w(self, data, target, lr):
-        error = target - self.forward(data)
-        error = torch.transpose(error, 0, 1)
-        data = data.view(-1, 28 * 28)
-        self.linear.weight.data = self.linear.weight.data + lr * torch.matmul(
-            error, data
-        )
+        zeros = torch.zeros(10)
+        zeros[target.item()] = 1.
+        target = zeros
+        correct = torch.equal(self.forward(data), target)
+        correct=False
+        if not correct:
+            error = target - self.forward(data)
+            error = torch.transpose(error, 0, 1)
+            data = data.view(-1, 28 * 28)
+            self.linear.weight.data = self.linear.weight.data + lr * torch.matmul(
+                error, data
+            )
 
     def an_epoch(self, dataload, lr):
         self.train()
@@ -61,11 +67,11 @@ v_data = torch.utils.data.DataLoader(validation_data, shuffle=False)
 
 # %%
 # f, g, h
-n_list = [50]
+n_list = [50, 1000, 60000]
 lr = 1
-epsilon = 0
+epsilon = [0, 0, 6600]
 
-for n in n_list:
+for index, n in enumerate(n_list):
     model = MultiPrcptrn()
 
     # change size of training set here
@@ -74,15 +80,53 @@ for n in n_list:
 
     epochs = 0
     misclass_list = [model.misclass(t_data)]
-    while misclass_list[-1] > epsilon:
+    wrong = misclass_list[0]
+    while True:
         epochs += 1
         model.an_epoch(t_data, lr)
         wrong = model.misclass(t_data)
-        print(wrong)
         misclass_list.append(wrong)
 
-    print(epochs)
-    print(misclass_list)
-    print(model.misclass(v_data))
+        if wrong <= epsilon[index]: break
 
+    print("validation set inaccuracy = " + str(model.misclass(v_data) / n) + "%")
+
+    plt.plot(list(range(epochs+1)), [mis / n for mis in misclass_list])
+    title = "n = " + str(n) + ", training inaccuracy cutoff = " + str(epsilon[index] / n) + "%"
+    plt.title(title)
+    plt.xlabel("epochs")
+    plt.ylabel("training set inaccuracy (%)")
+    plt.show()
+
+# %%
+#i
+n = 60000
+lr = .5
+epsilon = 7000
+
+model = MultiPrcptrn()
+
+# change size of training set here
+training_subset = torch.utils.data.Subset(training_data, list(range(n)))
+t_data = torch.utils.data.DataLoader(training_subset, shuffle=True)
+
+epochs = 0
+misclass_list = [model.misclass(t_data)]
+wrong = misclass_list[0]
+while True:
+    epochs += 1
+    model.an_epoch(t_data, lr)
+    wrong = model.misclass(t_data)
+    misclass_list.append(wrong)
+
+    if wrong <= epsilon: break
+
+print("validation set inaccuracy = " + str(model.misclass(v_data) / n) + "%")
+
+plt.plot(list(range(epochs+1)), [mis / n for mis in misclass_list])
+title = "n = " + str(n) + ", training inaccuracy cutoff = " + str(epsilon / n) + "% \nlearning rate = " + str(lr)
+plt.title(title)
+plt.xlabel("epochs")
+plt.ylabel("training set inaccuracy (%)")
+plt.show()
 # %%
