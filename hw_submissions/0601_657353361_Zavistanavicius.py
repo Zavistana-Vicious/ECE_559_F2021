@@ -1,6 +1,7 @@
 #%%
 from PIL import Image
 from torch.utils.data.dataset import Dataset
+from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -104,8 +105,45 @@ class_dict = {
 }
 
 #%%
-train_loader = GeometricDataset(class_dict, "train")
-test_loader = GeometricDataset(class_dict, "test")
+train_set = GeometricDataset(class_dict, "train")
+test_set = GeometricDataset(class_dict, "test")
+
+train_loader = DataLoader(train_set, batch_size=10, shuffle=True)
+test_loader = DataLoader(test_set, batch_size=10)
 
 
+# %%
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv = torch.nn.Sequential(nn.Conv2d(1, 5, 5, 3, 0), nn.ReLU())
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout1 = nn.Dropout(0.25)
+        self.fc1 = torch.nn.Sequential(nn.Linear(5445, 128), nn.ReLU())
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc2 = torch.nn.Sequential(nn.Linear(128, 64), nn.ReLU())
+        self.output = torch.nn.Sequential(nn.Linear(64, 9), nn.Softmax())
+
+    def forward(self, x):
+        x = x.unsqueeze(1)
+        x = self.conv(x)
+        x = self.pool(x)
+        x = torch.flatten(x, 1)
+        x = self.dropout1(x)
+        x = self.fc1(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        x = self.output(x)
+
+        return x
+
+
+# %%
+model = CNN()
+for batch_idx, (data, target) in enumerate(train_loader):
+    output = model(data)
+    print(output, target)
+    break
+
+print(torch.nn.BCELoss()(output, target))
 # %%
