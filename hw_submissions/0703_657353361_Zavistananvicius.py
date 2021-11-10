@@ -25,6 +25,16 @@ def letter_to_onehot(letter):
     return onehot
 
 
+def convert_to(a_list, to):
+    for i in range(len(a_list)):
+        if to == "onehot":
+            a_list[i] = letter_to_onehot(a_list[i])
+        if to == "letter":
+            a_list[i] = onehot_to_letter(a_list[i])
+
+    return a_list
+
+
 #%%
 class LSTM(nn.Module):
     def __init__(self, input_size=27, hidden_size=128, num_layers=2, output_size=27):
@@ -74,8 +84,13 @@ def generate(model, initial_str="a"):
 
 
 #%%
-model = torch.load("0602_657353361_Zavistanavicius.pt")
+model = torch.load("0702_657353361_Zavistanavicius.pt").to("cpu")
+number_of_names = 20
 for onehot in range(1, 27):
-    letter = letter_to_onehot(onehot)
-    for i in range(2):
-        print(generate(model, letter))
+    letter = onehot_to_letter(onehot)
+    print("Leter: " + letter)
+    for i in range(number_of_names - 1):
+        temp = str(generate(model, letter))
+        print("\t" + temp)
+
+# %%

@@ -143,11 +143,11 @@ model = LSTM().to(device)
 # %%
 epochs = 50
 loss_list = []
-best_test_loss = 9999999999999999999
+best_test_loss = 999999999
 model_path = "0702_657353361_Zavistanavicius.pt"
 for i in range(epochs):
     print(i / epochs)
-    loss_list.append(train(model, device, data_loader))
+    loss_list.append(train(model, device, data_loader).item())
 
     if best_test_loss > loss_list[-1]:
         best_test_loss = loss_list[-1]
@@ -164,26 +164,3 @@ plt.title("Training Loss vs Epochs")
 plt.show()
 
 # %%
-def generate(model, initial_str="a"):
-    name = initial_str
-    hidden, cell = model.init_hidden(1)
-    initial_input = letter_to_onehot(initial_str)
-
-    for i in range(11):
-        inp = torch.Tensor([initial_input])
-
-        output, (hidden, cell) = model(
-            inp[0].to(device), hidden.to(device), cell.to(device)
-        )
-
-        output = output.cpu().detach().numpy()[0]
-        top_3_ind = list(np.argpartition(output, -3)[-3:])
-        choice = np.random.choice(top_3_ind)
-
-        if choice == 0:
-            break
-        else:
-            name = name + onehot_to_letter(choice)
-            initial_input = choice
-
-    return name
